@@ -1,0 +1,241 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Reusable Hardened Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isVerifiedUser() && request.auth.uid == uid;
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'name', 'email', 'homeAirport', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && data.uid == request.auth.uid && isValidId(data.uid)
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && (!('homeAirport' in data) || (data.homeAirport is string && data.homeAirport.size() <= 80))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTravelPreferences(data, userId) {
+      return data.keys().hasAll(['userId', 'preferredActivities', 'budgetPreference', 'accommodationPreference', 'travelStyle', 'currency', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'preferredActivities', 'budgetPreference', 'accommodationPreference', 'travelStyle', 'currency', 'updatedAt'])
+        && data.userId is string && data.userId == userId && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.preferredActivities is list && data.preferredActivities.size() <= 15
+        && (data.preferredActivities.size() == 0 || data.preferredActivities[0] is string)
+        && data.budgetPreference is string && data.budgetPreference in ['budget', 'balanced', 'comfort', 'luxury']
+        && data.accommodationPreference is string && data.accommodationPreference in ['hostel', 'boutique', 'hotel', 'resort', 'villa']
+        && data.travelStyle is string && data.travelStyle in ['adventure', 'relaxed', 'cultural', 'family', 'honeymoon', 'business']
+        && data.currency is string && data.currency in ['INR', 'USD', 'EUR', 'GBP', 'AED', 'JPY']
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTrip(data, tripId) {
+      return data.keys().hasAll(['tripId', 'userId', 'origin', 'destination', 'departureDate', 'returnDate', 'travellers', 'budget', 'currency', 'itinerary', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['tripId', 'userId', 'origin', 'destination', 'departureDate', 'returnDate', 'travellers', 'budget', 'currency', 'travelStyle', 'itinerary', 'budgetBreakdown', 'status', 'createdAt', 'updatedAt'])
+        && data.tripId is string && data.tripId == tripId && isValidId(data.tripId)
+        && data.userId is string && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.origin is string && data.origin.size() >= 1 && data.origin.size() <= 120
+        && data.destination is string && data.destination.size() >= 1 && data.destination.size() <= 120
+        && data.departureDate is string && data.departureDate.size() >= 4 && data.departureDate.size() <= 32
+        && data.returnDate is string && data.returnDate.size() >= 4 && data.returnDate.size() <= 32
+        && data.travellers is int && data.travellers >= 1 && data.travellers <= 50
+        && data.budget is number && data.budget >= 0 && data.budget <= 100000000
+        && data.currency is string && data.currency.size() >= 1 && data.currency.size() <= 8
+        && (!('travelStyle' in data) || (data.travelStyle is string && data.travelStyle.size() <= 64))
+        && data.itinerary is list && data.itinerary.size() <= 30
+        && (data.itinerary.size() == 0 || data.itinerary[0] is map)
+        && (!('budgetBreakdown' in data) || data.budgetBreakdown is map)
+        && data.status is string && data.status in ['planned', 'upcoming', 'completed', 'disrupted']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidConversation(data, conversationId) {
+      return data.keys().hasAll(['conversationId', 'userId', 'title', 'messages', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['conversationId', 'userId', 'title', 'messages', 'createdAt', 'updatedAt'])
+        && data.conversationId is string && data.conversationId == conversationId && isValidId(data.conversationId)
+        && data.userId is string && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.messages is list && data.messages.size() <= 100
+        && (data.messages.size() == 0 || data.messages[0] is map)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSavedDestination(data, savedId) {
+      return data.keys().hasAll(['destinationId', 'userId', 'destination', 'country', 'savedAt'])
+        && data.keys().hasOnly(['destinationId', 'userId', 'destination', 'country', 'estimatedBudget', 'savedAt'])
+        && data.destinationId is string && data.destinationId == savedId && isValidId(data.destinationId)
+        && data.userId is string && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.destination is string && data.destination.size() >= 1 && data.destination.size() <= 120
+        && data.country is string && data.country.size() >= 1 && data.country.size() <= 80
+        && (!('estimatedBudget' in data) || (data.estimatedBudget is number && data.estimatedBudget >= 0))
+        && data.savedAt is timestamp;
+    }
+
+    function isValidRecoveryPlan(data, recoveryId) {
+      return data.keys().hasAll(['recoveryId', 'tripId', 'userId', 'disruptionType', 'originalPlan', 'alternativePlan', 'status', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['recoveryId', 'tripId', 'userId', 'disruptionType', 'originalPlan', 'alternativePlan', 'costDifference', 'timeDifference', 'status', 'createdAt', 'updatedAt'])
+        && data.recoveryId is string && data.recoveryId == recoveryId && isValidId(data.recoveryId)
+        && data.tripId is string && isValidId(data.tripId)
+        && data.userId is string && data.userId == request.auth.uid && isValidId(data.userId)
+        && data.disruptionType is string && data.disruptionType in ['flight_cancellation', 'flight_delay', 'hotel_cancellation', 'missed_connection', 'budget_change', 'weather_disruption', 'missed_activity']
+        && data.originalPlan is map
+        && data.alternativePlan is map
+        && (!('costDifference' in data) || (data.costDifference is string && data.costDifference.size() <= 80))
+        && (!('timeDifference' in data) || (data.timeDifference is string && data.timeDifference.size() <= 80))
+        && data.status is string && data.status in ['pending_confirmation', 'confirmed', 'dismissed']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+
+    // 1. User Profiles (PII strictly isolated to owner)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'homeAirport', 'updatedAt']);
+      allow delete: if isValidId(userId) && isOwner(userId);
+    }
+
+    // 2. Travel Preferences
+    match /travelPreferences/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && isValidTravelPreferences(incoming(), userId)
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidTravelPreferences(incoming(), userId)
+        && incoming().userId == existing().userId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['preferredActivities', 'budgetPreference', 'accommodationPreference', 'travelStyle', 'currency', 'updatedAt']);
+      allow delete: if isValidId(userId) && isOwner(userId);
+    }
+
+    // 3. Trips
+    match /trips/{tripId} {
+      allow get: if isValidId(tripId) && isVerifiedUser() && existing().userId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(tripId)
+        && isVerifiedUser()
+        && isValidTrip(incoming(), tripId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(tripId)
+        && isVerifiedUser()
+        && existing().userId == request.auth.uid
+        && isValidTrip(incoming(), tripId)
+        && incoming().tripId == existing().tripId
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['origin', 'destination', 'departureDate', 'returnDate', 'travellers', 'budget', 'currency', 'travelStyle', 'itinerary', 'budgetBreakdown', 'status', 'updatedAt'])
+        );
+      allow delete: if isValidId(tripId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    // 4. Conversations (AI Travel Copilot history)
+    match /conversations/{conversationId} {
+      allow get: if isValidId(conversationId) && isVerifiedUser() && existing().userId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(conversationId)
+        && isVerifiedUser()
+        && isValidConversation(incoming(), conversationId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(conversationId)
+        && isVerifiedUser()
+        && existing().userId == request.auth.uid
+        && isValidConversation(incoming(), conversationId)
+        && incoming().conversationId == existing().conversationId
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'messages', 'updatedAt']);
+      allow delete: if isValidId(conversationId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    // 5. Saved Destinations
+    match /savedDestinations/{savedId} {
+      allow get: if isValidId(savedId) && isVerifiedUser() && existing().userId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(savedId)
+        && isVerifiedUser()
+        && isValidSavedDestination(incoming(), savedId)
+        && incoming().savedAt == request.time;
+      allow update: if false;
+      allow delete: if isValidId(savedId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+
+    // 6. Recovery Plans
+    match /recoveryPlans/{recoveryId} {
+      allow get: if isValidId(recoveryId) && isVerifiedUser() && existing().userId == request.auth.uid;
+      allow list: if isVerifiedUser() && resource.data.userId == request.auth.uid;
+      allow create: if isValidId(recoveryId)
+        && isVerifiedUser()
+        && isValidRecoveryPlan(incoming(), recoveryId)
+        && incoming().status == 'pending_confirmation'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/trips/$(incoming().tripId))
+        && get(/databases/$(database)/documents/trips/$(incoming().tripId)).data.userId == request.auth.uid;
+      allow update: if isValidId(recoveryId)
+        && isVerifiedUser()
+        && existing().userId == request.auth.uid
+        && existing().status == 'pending_confirmation'
+        && isValidRecoveryPlan(incoming(), recoveryId)
+        && incoming().recoveryId == existing().recoveryId
+        && incoming().tripId == existing().tripId
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isValidId(recoveryId) && isVerifiedUser() && existing().userId == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,301 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated traveller profile with PII strictly isolated to document owner.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "homeAirport": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "name", "email", "createdAt", "updatedAt"]
+    },
+    "TravelPreferences": {
+      "title": "TravelPreferences",
+      "description": "Traveller style, budget range, accommodation and activity preferences.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "preferredActivities": {
+          "type": "array",
+          "description": "Bounded list of up to 15 preferred activity categories."
+        },
+        "budgetPreference": {
+          "type": "string",
+          "enum": ["budget", "balanced", "comfort", "luxury"],
+          "maxLength": 32
+        },
+        "accommodationPreference": {
+          "type": "string",
+          "enum": ["hostel", "boutique", "hotel", "resort", "villa"],
+          "maxLength": 32
+        },
+        "travelStyle": {
+          "type": "string",
+          "enum": ["adventure", "relaxed", "cultural", "family", "honeymoon", "business"],
+          "maxLength": 32
+        },
+        "currency": {
+          "type": "string",
+          "enum": ["INR", "USD", "EUR", "GBP", "AED", "JPY"],
+          "maxLength": 8
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "preferredActivities", "budgetPreference", "accommodationPreference", "travelStyle", "currency", "updatedAt"]
+    },
+    "Trip": {
+      "title": "Trip",
+      "description": "Saved or planned trip itinerary and budget record owned by a traveller.",
+      "type": "object",
+      "properties": {
+        "tripId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "origin": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "destination": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "departureDate": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "returnDate": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "travellers": {
+          "type": "integer"
+        },
+        "budget": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string",
+          "maxLength": 8
+        },
+        "travelStyle": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "itinerary": {
+          "type": "array",
+          "description": "Day-wise structured itinerary (bounded to <= 30 days)."
+        },
+        "budgetBreakdown": {
+          "type": "object"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "upcoming", "completed", "disrupted"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["tripId", "userId", "origin", "destination", "departureDate", "returnDate", "travellers", "budget", "currency", "itinerary", "status", "createdAt", "updatedAt"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "AI Travel Copilot multi-turn conversation history owned by a user.",
+      "type": "object",
+      "properties": {
+        "conversationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "messages": {
+          "type": "array",
+          "description": "Bounded message array (<= 100 messages)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["conversationId", "userId", "title", "messages", "createdAt", "updatedAt"]
+    },
+    "SavedDestination": {
+      "title": "SavedDestination",
+      "description": "Bookmarked destination saved by a traveller.",
+      "type": "object",
+      "properties": {
+        "destinationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "destination": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "country": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "estimatedBudget": {
+          "type": "number"
+        },
+        "savedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["destinationId", "userId", "destination", "country", "savedAt"]
+    },
+    "RecoveryPlan": {
+      "title": "RecoveryPlan",
+      "description": "Adaptive Journey Recovery plan generated for a trip disruption.",
+      "type": "object",
+      "properties": {
+        "recoveryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "tripId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "disruptionType": {
+          "type": "string",
+          "enum": ["flight_cancellation", "flight_delay", "hotel_cancellation", "missed_connection", "budget_change", "weather_disruption", "missed_activity"]
+        },
+        "originalPlan": {
+          "type": "object"
+        },
+        "alternativePlan": {
+          "type": "object"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending_confirmation", "confirmed", "dismissed"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["recoveryId", "tripId", "userId", "disruptionType", "originalPlan", "alternativePlan", "status", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-isolated traveller profile documents."
+    },
+    "/travelPreferences/{userId}": {
+      "schema": { "$ref": "#/entities/TravelPreferences" },
+      "description": "Owner-isolated traveller preferences documents."
+    },
+    "/trips/{tripId}": {
+      "schema": { "$ref": "#/entities/Trip" },
+      "description": "Traveller-owned trip plans and itineraries."
+    },
+    "/conversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/Conversation" },
+      "description": "Traveller-owned AI Travel Copilot conversation threads."
+    },
+    "/savedDestinations/{savedId}": {
+      "schema": { "$ref": "#/entities/SavedDestination" },
+      "description": "Traveller-owned saved destination bookmarks."
+    },
+    "/recoveryPlans/{recoveryId}": {
+      "schema": { "$ref": "#/entities/RecoveryPlan" },
+      "description": "Traveller-owned adaptive journey recovery plans."
+    }
+  }
+}

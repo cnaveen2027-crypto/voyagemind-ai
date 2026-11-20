@@ -1,0 +1,6 @@
+{
+  "name": "VoyageMind AI",
+  "description": "Agentic AI Travel Agent & Trip Management Copilot powered by coordinated specialized Gemini agents, Google Maps Platform, and Adaptive Journey Recovery.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
